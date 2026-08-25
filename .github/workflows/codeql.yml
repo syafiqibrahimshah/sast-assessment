@@ -48,7 +48,7 @@ jobs:
         - language: go
           build-mode: autobuild
         - language: java-kotlin
-          build-mode: autobuild
+          build-mode: manual
         - language: javascript-typescript
           build-mode: none
         - language: python
@@ -96,7 +96,18 @@ jobs:
       run: |
         echo 'If you are using a "manual" build mode for one or more of the' \
           'languages you are analyzing, replace this with the commands to build' \
-          'your code, for example:'
+          'your code, for example:'          - name: Set up Java
+            if: matrix.language == 'java-kotlin'
+            uses: actions/setup-java@v4
+            with:
+              distribution: temurin
+              java-version: '17'
+              cache: maven
+          
+          - name: Build Java project
+            if: matrix.language == 'java-kotlin'
+            working-directory: services/settlement
+            run: mvn -B -ntp package -DskipTests
         echo '  make bootstrap'
         echo '  make release'
         exit 1
