@@ -94,15 +94,15 @@ jobs:
       if: matrix.build-mode == 'manual'
       shell: bash
       run: |
-        echo 'If you are using a "manual" build mode for one or more of the' \
-          'languages you are analyzing, replace this with the commands to build' \
-          'your code, for example:'          - name: Set up Java
-            if: matrix.language == 'java-kotlin'
-            uses: actions/setup-java@v4
-            with:
-              distribution: temurin
-              java-version: '17'
-              cache: maven
+        echo 'If you are using a "manual" build mode for one or more of the languages you are analyzing, replace this with the commands to build your code.'
+
+    - name: Set up Java
+      if: matrix.language == 'java-kotlin'
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+        cache: maven
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
