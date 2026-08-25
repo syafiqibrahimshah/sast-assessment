@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep:1.174.0
 
     # Avoid permission issues with Dependabot PRs.
     if: github.actor != 'dependabot[bot]'
