@@ -14,19 +14,21 @@ permissions:
 
 jobs:
   analyze:
-    name: CodeQL
+    name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        language:
-          - python
-          - javascript
-          - java-kotlin
-          - go
-        build-mode:
-          - autobuild
+        include:
+          - language: python
+            build-mode: none
+          - language: javascript
+            build-mode: none
+          - language: java-kotlin
+            build-mode: autobuild
+          - language: go
+            build-mode: autobuild
 
     steps:
       - name: Checkout
@@ -39,6 +41,7 @@ jobs:
           build-mode: ${{ matrix.build-mode }}
 
       - name: Autobuild
+        if: matrix.build-mode == 'autobuild'
         uses: github/codeql-action/autobuild@v3
 
       - name: Analyze
