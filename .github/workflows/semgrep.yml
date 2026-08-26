@@ -19,11 +19,11 @@ jobs:
     timeout-minutes: 10
 
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep:1.174.0
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Run Semgrep CI
         run: semgrep ci --code --no-suppress-errors
