@@ -97,9 +97,9 @@ jobs:
       contents: read
       security-events: write
     container:
-      image: semgrep/semgrep:1
+      image: semgrep/semgrep:1.174.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
         with:
           persist-credentials: false
 
