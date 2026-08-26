@@ -1,0 +1,116 @@
+# Semgrep SAST gate for paylink.
+#
+# - PR / push to main: diff-scoped scan (changed lines only vs. the merge-base).
+#   Block/Comment/Monitor enforcement per rule is configured on the Semgrep
+#   AppSec Platform's Policies page (Rules > Policies > Code), not here —
+#   `semgrep ci` pulls that config automatically when SEMGREP_APP_TOKEN is
+#   set. Without the token, semgrep ci treats every finding as blocking, so
+#   the token is required, not optional (see the preflight step below).
+#
+# - main / nightly schedule: full-repo scan, always non-blocking. This is
+#   what surfaces the pre-existing Day-1 findings across the repo without
+#   making them anyone's PR problem — see ENFORCEMENT.md.
+#
+# Supply chain: Actions and the Semgrep image are pinned to version tags,
+# not verified digests — pin those yourself before this runs against a real
+# repo (see README.md for the exact commands).
+
+name: SAST (Semgrep)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  diff-scan:
+    name: Semgrep (diff-scoped, policy-gated)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    container:
+      image: semgrep/semgrep:1.174.0
+    steps:
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Require SEMGREP_APP_TOKEN
+        run: |
+          if [ -z "$SEMGREP_APP_TOKEN" ]; then
+            echo "::error::SEMGREP_APP_TOKEN is not set. Without it, semgrep ci"
+            echo "::error::treats every finding as blocking, ignoring the Policies"
+            echo "::error::page (Rules > Policies > Code). Create the token in"
+            echo "::error::Semgrep AppSec Platform > Settings > Tokens, then:"
+            echo "::error::  gh secret set SEMGREP_APP_TOKEN --repo <org>/<repo>"
+            exit 1
+          fi
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Resolve baseline commit
+        id: baseline
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "sha=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Semgrep scan (changed files, policy from AppSec Platform)
+        run: |
+          semgrep ci \
+            --baseline-commit "${{ steps.baseline.outputs.sha }}" \
+            --sarif --output semgrep-diff.sarif
+          # No --config: with SEMGREP_APP_TOKEN set, semgrep ci pulls the
+          # ruleset and each rule's Block/Comment/Monitor mode from the
+          # Policies page. A nonzero exit here is a real Block-mode finding
+          # (or a scanner error) and fails this job directly — no extra
+          # pass/fail logic needed on top of what semgrep ci already decided.
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - name: Upload SARIF to code scanning
+        if: always() && hashFiles('semgrep-diff.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-diff.sarif
+          category: semgrep-diff
+
+  full-scan:
+    name: Semgrep (full-repo, non-blocking)
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    container:
+      image: semgrep/semgrep:1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Full-repo scan (report only)
+        continue-on-error: true   # never fails this job — Day-1 backlog feed, not a gate
+        run: semgrep ci --sarif --output semgrep-full.sarif
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('semgrep-full.sarif') != ''
+        with:
+          sarif_file: semgrep-full.sarif
+          category: semgrep-full-repo
