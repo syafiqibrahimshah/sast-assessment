@@ -1,0 +1,35 @@
+rules:
+  - id: paylink.python-shell-true
+    languages: [python]
+    message: Avoid shell=True with values derived from requests.
+    severity: ERROR
+    mode: search
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+
+  - id: paylink.go-command-shell
+    languages: [go]
+    message: Do not build shell commands from request-controlled strings.
+    severity: ERROR
+    mode: search
+    pattern: exec.Command("sh", "-c", ...)
+
+  - id: paylink.javascript-child-process-exec
+    languages: [javascript]
+    message: Avoid string-built shell commands with untrusted values.
+    severity: ERROR
+    mode: search
+    pattern: exec($COMMAND, ...)
+
+  - id: paylink.javascript-jwt-none
+    languages: [javascript]
+    message: Do not permit the JWT none algorithm.
+    severity: ERROR
+    mode: search
+    pattern: 'jwt.verify(..., { ..., algorithms: [..., ''none'', ...], ... })'
+
+  - id: paylink.java-string-sql
+    languages: [java]
+    message: Use a parameterized SQL statement instead of concatenating input.
+    severity: ERROR
+    mode: search
+    pattern: String $SQL = $LEFT + $RIGHT;
