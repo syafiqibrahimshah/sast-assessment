@@ -249,18 +249,18 @@ build, followed by query analysis. The `real` value from `/usr/bin/time -p` is
 the wall-clock time used for comparison. CodeQL runs used a workspace temporary
 directory to avoid a macOS temporary-path permission issue.
 
-| Tool and scope | Phase | Wall clock (`real`) | Findings | 
-|---|---|---:|---:|---:|
-| Semgrep custom rules on `services/` | Scan | 1.23s | 5 | 
-| Semgrep `p/security-audit` on `services/` | Scan | 2.30s | 11 | 
-| Semgrep `auto` on `services/` | Scan | 8.17s | 33 | 
-| CodeQL Python | Database creation | 1.97s | n/a | 
-| CodeQL Python | Query analysis | 5.26s | 8 | 
-| CodeQL JavaScript | Database creation | 3.07s | n/a | 
-| CodeQL JavaScript | Query analysis | 9.10s | 5 | 
-| CodeQL Java, `--build-mode=none` | Database creation | 13.23s | n/a | 
-| CodeQL Java | Query analysis | 8.39s | 0 | 
-| CodeQL Go, including `go build ./...` | Database creation | 8.02s | n/a | 
+| Tool and scope | Phase | Wall clock (`real`) | Findings |
+|---|---|---:|---:|
+| Semgrep custom rules on `services/` | Scan | 1.23s | 5 |
+| Semgrep `p/security-audit` on `services/` | Scan | 2.30s | 11 |
+| Semgrep `auto` on `services/` | Scan | 8.17s | 33 |
+| CodeQL Python | Database creation | 1.97s | n/a |
+| CodeQL Python | Query analysis | 5.26s | 8 |
+| CodeQL JavaScript | Database creation | 3.07s | n/a |
+| CodeQL JavaScript | Query analysis | 9.10s | 5 |
+| CodeQL Java | Database creation, including `mvn clean package` | 13.23s | n/a |
+| CodeQL Java | Query analysis | 8.39s | 0 |
+| CodeQL Go | Database creation | 8.02s | n/a |
 | CodeQL Go | Query analysis | 5.23s | 2 |
 
 **Verified against target-app:** Semgrep analyzed 17 application files. CodeQL
