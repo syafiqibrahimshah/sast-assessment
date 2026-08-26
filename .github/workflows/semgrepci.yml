@@ -39,9 +39,9 @@ jobs:
       security-events: write
       pull-requests: write
     container:
-      image: semgrep/semgrep:1   # TODO: pin to a digest you resolved yourself
+      image: semgrep/semgrep:1.174.0
     steps:
-      - uses: actions/checkout@v4   # TODO: pin to a SHA you resolved yourself
+      - uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9
         with:
           fetch-depth: 0
           persist-credentials: false
