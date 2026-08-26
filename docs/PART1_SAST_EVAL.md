@@ -249,27 +249,24 @@ build, followed by query analysis. The `real` value from `/usr/bin/time -p` is
 the wall-clock time used for comparison. CodeQL runs used a workspace temporary
 directory to avoid a macOS temporary-path permission issue.
 
-| Tool and scope | Phase | Wall clock (`real`) | Findings | Exit |
+| Tool and scope | Phase | Wall clock (`real`) | Findings | 
 |---|---|---:|---:|---:|
-| Semgrep custom rules on `services/` | Scan | 1.23s | 5 | 1 |
-| Semgrep `p/security-audit` on `services/` | Scan | 2.30s | 11 | 1 |
-| Semgrep `auto` on `services/` | Scan | 8.17s | 33 | 1 |
-| CodeQL Python | Database creation | 1.97s | n/a | 0 |
-| CodeQL Python | Query analysis | 5.26s | 8 | 0 |
-| CodeQL JavaScript | Database creation | 3.07s | n/a | 0 |
-| CodeQL JavaScript | Query analysis | 9.10s | 5 | 0 |
-| CodeQL Java, `--build-mode=none` | Database creation | 13.23s | n/a | 0 |
-| CodeQL Java | Query analysis | 8.39s | 0 | 0 |
-| CodeQL Go, including `go build ./...` | Database creation | 8.02s | n/a | 0 |
-| CodeQL Go | Query analysis | 5.23s | 2 | 0 |
+| Semgrep custom rules on `services/` | Scan | 1.23s | 5 | 
+| Semgrep `p/security-audit` on `services/` | Scan | 2.30s | 11 | 
+| Semgrep `auto` on `services/` | Scan | 8.17s | 33 | 
+| CodeQL Python | Database creation | 1.97s | n/a | 
+| CodeQL Python | Query analysis | 5.26s | 8 | 
+| CodeQL JavaScript | Database creation | 3.07s | n/a | 
+| CodeQL JavaScript | Query analysis | 9.10s | 5 | 
+| CodeQL Java, `--build-mode=none` | Database creation | 13.23s | n/a | 
+| CodeQL Java | Query analysis | 8.39s | 0 | 
+| CodeQL Go, including `go build ./...` | Database creation | 8.02s | n/a | 
+| CodeQL Go | Query analysis | 5.23s | 2 |
 
 **Verified against target-app:** Semgrep analyzed 17 application files. CodeQL
 analyzed 10 Python, 4 JavaScript, 3 Java, and 2 Go files. CodeQL end-to-end
 totals were Python 7.23s, JavaScript 12.17s, Java 21.62s, and Go 13.25s.
 These totals include database creation; Semgrep has no database phase.
-
-The full-repository Semgrep runs above include generated CodeQL databases and
-logs, so the `services/` measurements are the fair source-only comparison.
 
 ## Comparison table
 
@@ -277,7 +274,7 @@ logs, so the `services/` measurements are the fair source-only comparison.
 |---|---|---|---|
 | **Languages in this repository** | Supports Python, JavaScript, Java, and Go in the selected scans. Verified against target-app; registry scans analyzed all four service languages | Supports Python, JavaScript, Java, and Go. Verified against target-app; CodeQL databases build and analyzed for all four languages | **Vendor documentation:** both tools list these languages as supported |
 | **Findings returned** | 3 custom-rule findings; 34 with `auto`; 12 with `p/security-audit` | 8 Python, 5 JavaScript, 2 Go, and 0 Java security results | **Verified against target-app:** counts came from the JSON/SARIF artifacts in `artifacts/` |
-| **Findings assessed real** |  |  | **Verified against target-app:** *reachability* and exploitability are documented in the walkthrough below |
+| **Findings assessed real** | TODO | TODO | **Verified against target-app:** *reachability* and exploitability are documented in the walkthrough below |
 | **Scan duration** | See Duration measurement | See Duration measurement | **Verified against target-app:** Initially Semgrep durations came from `--time`; CodeQL duration uses /usr/bin/time but comparing with different tools in biased. Used AI agents to perform analysis that uses /usr/bin/time|
 | **Setup friction** | Easy local installation and setup. One command run. | CLI available. Database build required. Source build for compiled languages. | **Verified against target-app:** documented in the reproducibility section above |
 | **Rule customisability** | YAML patterns and taint rules | QL query packs and custom queries | **Vendor documentation:** both support custom detection logic.<br><br>**Verified against target-app:** `semgrep/rules.yml` validated and ran 5 rules; standard CodeQL packs ran, with no custom QL query authored. |
@@ -295,33 +292,16 @@ logs, so the `services/` measurements are the fair source-only comparison.
 
 ### Conclusion from the three cases
 
-The Go result demonstrates agreement between Semgrep and CodeQL on an obvious,
-reachable vulnerability. The CodeQL XSS result demonstrates why scanner
+1. The Go result demonstrates agreement between Semgrep and CodeQL on an obvious,
+reachable vulnerability. 
+
+2. The CodeQL XSS result demonstrates why scanner
 findings require manual review: custom sanitization can produce a false
-positive when it is not modeled by the analyzer. The Java SQL result demonstrates
+positive when it is not modeled by the analyzer. 
+
+3. The Java SQL result demonstrates
 a coverage difference: Semgrep identified an objectively unsafe SQL construction
 that CodeQL did not report because source-to-sink reachability was not proven.
-
-The comparison should therefore use confirmed underlying vulnerabilities,
-reachability, false-positive rate, and missed findings rather than raw alert
-counts alone.
-
-### Disagreements and assessment
-
-- Semgrep and CodeQL agreed on the highest-confidence Go command-injection,
-  Python deserialization, and Node command-injection cases.
-- Semgrep reported Java SQL concatenation and XXE; CodeQL returned no Java
-  security alerts even though the corrected Java source-mode database scanned
-  all three Java files. CodeQL’s Java taint query did not establish a caller
-  source in this standalone sample, while Semgrep’s pattern rules intentionally
-  report the dangerous sink/configuration without requiring a call graph.
-- CodeQL reported JavaScript rate-limiting, prototype-pollution, and reflected
-  XSS findings that the selected Semgrep security artifact did not report. This
-  shows complementary rule coverage rather than a universal winner.
-- The dead `eval` helper in `services/api/tests/test_auth.py` was deliberately
-  not counted as a reachable application vulnerability: it is not called by
-  the service. This is why manual triage is required before turning every alert
-  into a release blocker.
 
 ## Pipeline integration and enforcement evidence
 
