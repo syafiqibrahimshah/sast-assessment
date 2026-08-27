@@ -29,3 +29,10 @@ cd services/ledger && go build ./...
 This codebase is a reduced sample assembled for training and assessment
 purposes. It is not production software and must not be deployed or exposed
 to any network you care about.
+
+## Take-Home Assignment
+
+Check out the submission:
+- Part 1: [Tool research and comparison (evidence-backed)](docs/PART1_SAST_EVAL.md).
+- Part 2: [Pipeline integration and enforcement policy (runnable)](docs/PART2_ENFORCEMENT.md).
+- Part 3: [Conclusion, recommendation and success criteria](docs/PART3_DECISION.md).
