@@ -6,11 +6,11 @@ The runnable artifact is `.github/workflows/semgrepci.yml`. This document is the
 
 **Run 1 — clean commit, passes.**
 - PR: https://github.com/syafiqibrahimshah/coda-sast-assessment/pull/6
-- Rerun jobs: https://github.com/syafiqibrahimshah/coda-sast-assessment/actions/runs/33035161295/job/98396183834?pr=6
+- Re-run job: https://github.com/syafiqibrahimshah/coda-sast-assessment/actions/runs/33035161295/job/98396183834?pr=6
 
 **Run 2 — vulnerable diff, fails.**
 - PR:
-- Rerun jobs:
+- Re-run jobs:
 
 ## Enforcement policy
 
@@ -47,8 +47,8 @@ Reuse Semgrep Scoring System.
 
 ## Secrets and dependency vulnerabilities: in scope or separate?
 
-- **Secrets:** For this assessment, out of scope. It's a paid service in Semgrep.
-- **Dependency:** In scope via `semgrep ci` (Supply Chain). It's free, so why not. In this specific context, more security is good. SCA/dependency scanning serves a different function and does not overlap SAST.
+- **Secrets:** For this assessment, out of scope. It's a paid service/feature in Semgrep.
+- **Dependency:** In scope via `semgrep ci` (Supply Chain). It's free, so why not? In this specific context, more security is good. SCA/dependency scanning serves a different function and does not overlap SAST.
 
 ## Failure behaviour
 
@@ -78,7 +78,7 @@ For non-PCI repos, occasional CI friction from scanner infra isn't worth blockin
 ## Where AI/LLM tooling fits (optional section)
 
 I'd use it for:
-- First-pass triage, e.g.: is this reachable, is this the same root cause as another finding? Walk me through the source to sink. Reasoning is then verified by a human reviewer.
+- First-pass triage, e.g.: is this reachable, is this the same root cause as another finding? Walk me through the source to sink. The output and AI reasonings are then verified by a human reviewer.
 - Handling large amounts of low severity backlog findings.
 
 I would **not** let it make the block/don't-block decision unsupervised. Human in the loop is needed to verify evidence — a traced, reproducible path from source to sink for accountability.
