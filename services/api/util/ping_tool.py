@@ -9,4 +9,4 @@ app = Flask(__name__)
 def ping_host():
     host = request.args.get("host")
     result = subprocess.run(f"ping -c 1 {host}", shell=True, capture_output=True)
-    return result.stdout
+    return result.stdout.decode()
