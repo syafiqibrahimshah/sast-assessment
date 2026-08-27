@@ -1,0 +1,67 @@
+                   
+                   
+┌─────────────────┐
+│ 5 Code Findings │
+└─────────────────┘
+                                           
+  [36m[22m[24m  services/api/receipts.py[0m
+   ❯❯❱ [1msemgrep.paylink.python-shell-true[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Avoid shell=True with values derived from requests.
+                                                             
+           16┆ subprocess.run(cmd, shell=True, check=False)
+                                          
+  [36m[22m[24m  services/ledger/main.go[0m
+   ❯❯❱ [1msemgrep.paylink.go-command-shell[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Do not build shell commands from request-controlled strings.
+                                                                      
+           20┆ return exec.Command("sh", "-c", "/opt/paylink/reconcile --region "+region).CombinedOutput()
+                                                                                              
+  [36m[22m[24m  services/settlement/src/main/java/com/coda/settlement/LedgerRepository.java[0m
+   ❯❯❱ [1msemgrep.paylink.java-string-sql[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Use a parameterized SQL statement instead of concatenating input.
+                                                                           
+           24┆ String sql = "SELECT entry_id FROM ledger_entries WHERE merchant_id = '"
+           25┆         + merchantId + "' AND batch_ref = '" + batchRef + "'";
+                                                  
+  [36m[22m[24m  services/webhooks/lib/verify.js[0m
+   ❯❯❱ [1msemgrep.paylink.javascript-jwt-none[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Do not permit the JWT none algorithm.
+                                               
+           24┆ return jwt.verify(token, PARTNER_SECRET, { algorithms: ['none', 'HS256'] });
+                                              
+  [36m[22m[24m  services/webhooks/server.js[0m
+   ❯❯❱ [1msemgrep.paylink.javascript-child-process-exec[0m
+          [31m[1m[24m❰❰ Blocking ❱❱[0m
+          Avoid string-built shell commands with untrusted values.
+                                                                  
+           60┆ exec(`/usr/local/bin/export-events --partner ${partner} --day ${day}`, (err, stdout) => {
+           61┆   if (err) return res.status(500).json({ error: 'export failed' });
+           62┆   res.json({ output: stdout });
+           63┆ });
+                                                                     
+  ============================[ summary ]============================
+  Total time: 0.8051s Config time: 0.2867s Core time: 0.5091s
+                    
+  Semgrep-core time:
+  Total CPU time: 0.0794s  File parse time: 0.0635s  Rule parse time: 0.0028s  Match time: 0.0108s
+  Slowest 5/18 files
+  [32m[22m[24mservices/webhooks/server.js                       [0m (  2KB): 0.013s (0.012s to parse)
+  [32m[22m[24mservices/api/receipts.py                          [0m (865B):  0.013s (0.011s to parse)
+  [32m[22m[24mservices/webhooks/lib/verify.js                   [0m (785B):  0.012s (0.011s to parse)
+  [32m[22m[24m.../java/com/coda/settlement/LedgerRepository.java[0m (  1KB): 0.012s (0.010s to parse)
+  [32m[22m[24m...in/java/com/coda/settlement/IdempotencyKey.java[0m (  1KB): 0.012s (0.010s to parse)
+  Slowest 5 rules to match
+  [33m[22m[24msemgrep.paylink.java-string-sql:                           [0m 0.003s
+  [33m[22m[24msemgrep.paylink.go-command-shell:                          [0m 0.003s
+  [33m[22m[24msemgrep.paylink.python-shell-true:                         [0m 0.002s
+  [33m[22m[24msemgrep.paylink.javascript-jwt-none:                       [0m 0.002s
+  [33m[22m[24msemgrep.paylink.javascript-child-process-exec:             [0m 0.001s
+  Analyzed: 2 go files (  2KB in 0.013 seconds)    
+            3 java files (  4KB in 0.025 seconds)  
+            4 js files (  4KB in 0.025 seconds)    
+            9 python files (  9KB in 0.014 seconds)
+  Errors:   0 files with errors

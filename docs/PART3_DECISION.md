@@ -4,7 +4,7 @@ Recommend **Semgrep** for the 120-repository SAST rollout.
 The decisive practical advantage is the low-friction local and CI workflow for
 Python, JavaScript, Java, and Go, with custom rules that can be reviewed beside
 the application. It supports a gradual policy: full scans for inventory,
-diff-aware pull-request enforcement, SARIF artifacts, and optional dashboard
+diff-aware pull-request enforcement, SARIF artifacts, and dashboard
 triage.
 
 The most significant tradeoff is accepting less semantic, cross-file analysis

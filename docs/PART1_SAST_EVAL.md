@@ -15,171 +15,38 @@ Copyright (C) 2019-2026 GitHub, Inc.
 ..SNIP..
 ```
 
-### Local Run
+### Local Runs
 ##### `--config auto`. Output json.
 
-```markdown
-%  semgrep scan --time --config auto --error --json-output=./artifacts/semgrep-auto.json .
-
-
-..SNIP..
-  ============================[ summary ]============================
-  Total time: 40.3134s Config time: 3.5687s Core time: 36.7354s
-                    
-  Semgrep-core time:
-  Total CPU time: 46.3111s  File parse time: 0.2855s  Rule parse time: 0.9786s  Match time: 2.2257s
-  Slowest 5/6679 files
-  ...l-java/results/run-info-20260826.033313.473.yml (478KB): 0.401s (0.073s to parse)
-  ...eql-go/results/run-info-20260826.033418.747.yml (166KB): 0.151s (0.032s to parse)
-  ...script/results/run-info-20260826.033238.771.yml (297KB): 0.169s (0.029s to parse)
-  ...python/results/run-info-20260826.033157.332.yml (138KB): 0.065s (0.018s to parse)
-  services/ledger/client.go                          (  1KB): 0.020s (0.008s to parse)
-  Slowest 5 rules to match
-  ...t.allow-privilege-escalation-no-securitycontext:         0.095s
-  ...sqli-uri-params.django-aiomysql-sqli-uri-params:         0.054s
-  ...lambda-websocket-ssrf.aws-lambda-websocket-ssrf:         0.053s
-  ...n-ssrf-uri-params.fastapi-gdown-ssrf-uri-params:         0.051s
-  ...pulation.serverless-hypercorn-path-manipulation:         0.048s
-  Analyzed: 13281 generic files ( 46MB in 48.213 seconds)
-            6 go files (  7KB in 0.061 seconds)          
-            9 java files ( 12KB in 0.109 seconds)        
-            12 js files ( 12KB in 0.219 seconds)         
-            27 json files ( 17KB in 0.046 seconds)       
-            27 python files ( 28KB in 1.709 seconds)     
-            2 xml files (  1KB in 0.002 seconds)         
-            33 yaml files (  3MB in 1.003 seconds)       
-  Errors:   8 files with errors, see output before the results for details or run with --strict
-            ParseError (1 files)                                                               
-            MatchingError (2 files)                                                            
-
-                
-                
-┌──────────────┐
-│ Scan Summary │
-└──────────────┘
-✅ Scan completed successfully.
- • Findings: 34 (34 blocking)
- • Rules run: 2002
- • Targets scanned: 6679
- • Parsed lines: ~100.0%
- • Scan skipped: 
-   ◦ Files larger than  files 1.0 MB: 20
-   ◦ Files matching .semgrepignore patterns: 2
- • Scan was limited to files tracked by git
- • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
-Ran 2002 rules on 6679 files: 34 findings.
-```
-##### `--config p/security-audit`. Output sarif.
-```markdown
-% semgrep scan --metrics off --time --config p/security-audit --sarif-output=artifacts/semgrep-security-audit.sarif .
-
-..SNIP..
-  ============================[ summary ]============================
-  Total time: 4.0853s Config time: 0.5193s Core time: 3.5623s
-                    
-  Semgrep-core time:
-  Total CPU time: 3.1715s  File parse time: 0.1483s  Rule parse time: 0.1087s  Match time: 0.1258s
-  Slowest 5/6679 files
-  ...l-java/results/run-info-20260826.033313.473.yml (478KB): 0.057s (0.036s to parse)
-  ...script/results/run-info-20260826.033238.771.yml (297KB): 0.032s (0.018s to parse)
-  ...eql-go/results/run-info-20260826.033418.747.yml (166KB): 0.017s (0.012s to parse)
-  ...python/results/run-info-20260826.033157.332.yml (138KB): 0.011s (0.008s to parse)
-  ...og/database-index-files-20260826.110928.660.log (113KB): 0.010s (0.008s to parse)
-  Slowest 5 rules to match
-  ...te-as-no-escape.template-translate-as-no-escape:         0.041s
-  ...from-http-request.tainted-cmd-from-http-request:         0.022s
-  ....boto3.security.hardcoded-token.hardcoded-token:         0.013s
-  ...e-with-script-tag.unknown-value-with-script-tag:         0.012s
-  ...urity.detect-child-process.detect-child-process:         0.008s
-  Analyzed: 6641 generic files ( 23MB in 2.938 seconds)
-            4 go files (  4KB in 0.015 seconds)        
-            6 java files (  8KB in 0.052 seconds)      
-            8 js files (  8KB in 0.058 seconds)        
-            18 json files ( 11KB in 0.005 seconds)     
-            18 python files ( 18KB in 0.049 seconds)   
-            1 xml files (700B in 0.000 seconds)        
-            11 yaml files (  1MB in 0.118 seconds)     
-  Errors:   4 files with errors, see output before the results for details or run with --strict
-            ParseError (4 files)                                                               
-
-                
-                
-┌──────────────┐
-│ Scan Summary │
-└──────────────┘
-✅ Scan completed successfully.
- • Findings: 12 (12 blocking)
- • Rules run: 181
- • Targets scanned: 6679
- • Parsed lines: ~100.0%
- • Scan skipped: 
-   ◦ Files larger than  files 1.0 MB: 21
-   ◦ Files matching .semgrepignore patterns: 2
- • Scan was limited to files tracked by git
- • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
-Ran 181 rules on 6679 files: 12 findings.
+```bash
+%  semgrep scan \
+  --time \
+  --config auto \
+  --error \
+  --json-output=./artifacts/semgrep-auto.json \
+  --sarif-output=./artifacts/semgrep-auto.sarif \
+  --text-output=./artifacts/semgrep-auto.txt \
+  .
 ```
 ##### `--config semgrep/rules.yml`. Rules customization exploration. 
-
+```bash
+% semgrep scan \
+  --time \
+  --config semgrep/rules.yml \
+  --json-output=./artifacts/semgrep-custom.json \
+  --sarif-output=./artifacts/semgrep-custom.sarif \
+  --text-output=./artifacts/semgrep-custom.txt \
+  .
 ```
-% semgrep scan --time --config semgrep/rules.yml
-                
-  ============================[ summary ]============================
-  Total time: 0.8699s Config time: 0.1057s Core time: 0.7609s
-                    
-  Semgrep-core time:
-  Total CPU time: 0.0489s  File parse time: 0.0398s  Rule parse time: 0.0005s  Match time: 0.0065s
-  Slowest 5/18 files
-  services/webhooks/server.js                        (  2KB): 0.008s (0.007s to parse)
-  services/webhooks/lib/verify.js                    (785B):  0.008s (0.007s to parse)
-  ...in/java/com/coda/settlement/IdempotencyKey.java (  1KB): 0.008s (0.007s to parse)
-  .../java/com/coda/settlement/LedgerRepository.java (  1KB): 0.008s (0.007s to parse)
-  services/ledger/main.go                            (  1KB): 0.008s (0.006s to parse)
-  Slowest 5 rules to match
-  semgrep.paylink.java-string-sql:                            0.002s
-  semgrep.paylink.python-shell-true:                          0.002s
-  semgrep.paylink.go-command-shell:                           0.001s
-  semgrep.paylink.javascript-jwt-none:                        0.001s
-  semgrep.paylink.javascript-child-process-exec:              0.000s
-  Analyzed: 2 go files (  2KB in 0.008 seconds)    
-            3 java files (  4KB in 0.015 seconds)  
-            4 js files (  4KB in 0.016 seconds)    
-            9 python files (  9KB in 0.009 seconds)
-  Errors:   0 files with errors
-
-                
-                
-┌──────────────┐
-│ Scan Summary │
-└──────────────┘
-✅ Scan completed successfully.
- • Findings: 5 (5 blocking)
- • Rules run: 5
- • Targets scanned: 18
- • Parsed lines: ~100.0%
- • Scan skipped: 
-   ◦ Files larger than  files 1.0 MB: 21
-   ◦ Files matching .semgrepignore patterns: 2
- • Scan was limited to files tracked by git
- • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
-Ran 5 rules on 18 files: 5 findings.
-
-```
-
 
 ##### Create CodeQL Python DB
 ```bash
 % codeql database create artifacts/codeql-python --language=python --source-root=.
-..SNIP..
-% Successfully created database at /Users/syafiq/Coda3/target-app-semgrepci/artifacts/codeql-python.
 ```
 ##### Create CodeQL Javascript DB
 ```bash
  % codeql database create artifacts/codeql-javascript --language=javascript --source-root=.
-..SNIP..
-% Successfully created database at /Users/syafiq/Coda3/target-app-semgrepci/artifacts/codeql-javascript.
 ```
-
 ##### Create CodeQL Java DB
 ```bash 
 % cd services/settlement
@@ -187,8 +54,6 @@ Ran 5 rules on 18 files: 5 findings.
   --language=java \
   --source-root=. \
   --command='mvn clean package'
-..SNIP..
-Successfully created database at /Users/syafiq/Coda3/target-app-semgrepci/artifacts/codeql-java.
 ```
 
 ##### Create CodeQL Go
@@ -198,15 +63,11 @@ Successfully created database at /Users/syafiq/Coda3/target-app-semgrepci/artifa
   --language=go \
   --source-root=. \
   --command='go build ./...'
-..SNIP..
-Successfully created database at /Users/syafiq/Coda3/target-app-semgrepci/artifacts/codeql-go.
 ```
 
 ##### Analyze using CodeQL
-
 ```
 ## python
-
 % codeql database analyze artifacts/codeql-python \
   codeql/python-queries:codeql-suites/python-code-scanning.qls \
   --format=sarif-latest \
@@ -229,14 +90,6 @@ codeql database analyze artifacts/codeql-go \
   codeql/go-queries:codeql-suites/go-code-scanning.qls \
   --format=sarif-latest \
   --output=artifacts/codeql-go.sarif
-```
-
-##### Artifacts 
-```
-syafiq@Syafiqs-MacBook-Air target-app-semgrepci % ls artifacts 
-codeql-go			codeql-java.sarif		codeql-python			semgrep-security-audit.sarif
-codeql-go.sarif			codeql-javascript		codeql-python.sarif
-codeql-java			codeql-javascript.sarif		semgrep-auto.json
 ```
 
 ## Duration measurement
@@ -302,6 +155,4 @@ positive when it is not modeled by the analyzer.
 3. The Java SQL result demonstrates
 a coverage difference: Semgrep identified an objectively unsafe SQL construction
 that CodeQL did not report because source-to-sink reachability was not proven.
-
-
 
