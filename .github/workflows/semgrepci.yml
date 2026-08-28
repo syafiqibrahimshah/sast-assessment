@@ -3,8 +3,6 @@ name: SAST (Semgrep)
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch: {}
@@ -13,12 +11,12 @@ permissions:
   contents: read
 
 jobs:
-  # Blocking gate: diff-scoped on PRs/pushes to main.
+  # Blocking gate: diff-scoped on PRs into main.
   # Blocking vs. non-blocking severity is configured via rule policies
   # in Semgrep AppSec Platform, not in this workflow.
   diff-scan:
     name: Semgrep (diff-scoped, blocking)
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
