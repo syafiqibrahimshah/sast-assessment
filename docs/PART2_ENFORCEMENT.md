@@ -19,7 +19,7 @@ The runnable artifact is `.github/workflows/semgrepci.yml`. This document is the
 Reuse Semgrep Scoring System with a risk-based approach. We do not block every Semgrep finding because doing so would create excessive developer friction and
 reduce trust in the security gate.
 
-### SAST
+### SAST Policy Matrix
 
 | Severity | Confidence | Enforcement |
 |----------|------------|-------------|
