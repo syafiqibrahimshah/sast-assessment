@@ -364,6 +364,5 @@ These cases show complementary strengths between Semgrep and CodeQL:
 
 - **Semgrep** was effective at detecting explicit insecure code patterns, including shell execution, SQL concatenation, and HTML construction.
 - **CodeQL** was effective at tracing data from request-controlled sources to security-sensitive sinks, including command execution and outbound network requests.
-- **Custom sanitizers, authentication boundaries, input validation, and application context** materially affect whether a scanner result is exploitable.
 
 Semgrep contributes fast pattern-based detection and straightforward rule customization, while CodeQL contributes deeper data-flow analysis and reachability reasoning.
