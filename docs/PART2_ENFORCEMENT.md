@@ -3,17 +3,19 @@
 The runnable artifact is `.github/workflows/semgrepci.yml`. This document is the policy and reasoning behind it, the two required demonstration runs, and other considerations for the assessment.
 
 ## The two required runs
+1. Go to the PR's 'Checks' or 'Conversation' tab and confirm the Semgrep/security workflow.
+2. Click into the specific check run (not just the PR page) to land on the Actions run page, where the 're-run' controls live.
+3. Use the 'Re-run all jobs' button (top right of the run page).
 
 **Run 1 — clean commit, passes.**
 - PR: https://github.com/syafiqibrahimshah/coda-sast-assessment/pull/6
 - Re-run job: https://github.com/syafiqibrahimshah/coda-sast-assessment/actions/runs/33035161295/job/98396183834?pr=6
 
 **Run 2 — vulnerable diff, fails.**
-- PR:
-- Re-run jobs:
+- PR: https://github.com/syafiqibrahimshah/coda-sast-assessment/pull/8
+- Re-run jobs: https://github.com/syafiqibrahimshah/coda-sast-assessment/actions/runs/33134401358/job/98731023763?pr=8
 
 ## Enforcement policy
-
 Reuse Semgrep Scoring System with a risk-based approach. We do not block every Semgrep finding because doing so would create excessive developer friction and
 reduce trust in the security gate.
 
@@ -30,6 +32,10 @@ reduce trust in the security gate.
 | Medium | Medium/Low | MONITOR |
 | Low | Any | MONITOR |
 | Finding type | Action | Threshold |
+
+
+### Example of policy in Semgrep App Platform 
+<img src="../semgrep_policies.png" alt="Example of policy in Semgrep App Platform" width="300" height="200">
 
 ## Diff scope
 
@@ -57,7 +63,7 @@ reduce trust in the security gate.
 ## Secrets and dependency vulnerabilities: in scope or separate?
 
 - **Secrets:** For this assessment, out of scope. It's a paid service/feature in Semgrep.
-- **Dependency:** In scope via `semgrep ci` (Supply Chain). It's free, so why not? In this specific context, more security is good. SCA/dependency scanning serves a different function and does not overlap SAST.
+- **Dependency:** In scope via `semgrep ci` (Supply Chain). SCA/dependency scanning serves a different function and does not overlap SAST. However no enforcement policy is done for this assessments security gate.
 
 ## Failure behaviour
 
@@ -83,6 +89,7 @@ For non-PCI repos, occasional CI friction from scanner infra isn't worth blockin
 
 **NOT tested:**
 - Managed scans; could be useful for 120++ repos. See: https://docs.semgrep.dev/deployment/managed-scanning/overview
+- Drilling down supply chains/dependencies findings. 
 
 ## Where AI/LLM tooling fits (optional section)
 
