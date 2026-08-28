@@ -1,5 +1,5 @@
 # Recommendation
-Recommend **Semgrep** for the 120-repository SAST rollout.
+Recommend **Semgrep** for SAST rollout.
 
 The biggest practical win is how low-friction it is to run locally and in CI
 across Python, JavaScript, Java, and Go — custom rules live right next to the
