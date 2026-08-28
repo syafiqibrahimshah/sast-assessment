@@ -60,7 +60,7 @@ reduce trust in the security gate.
 
 ## Secrets and dependency vulnerabilities: in scope or separate?
 
-- **Secrets:** For this assessment, out of scope. It's a paid service/feature in Semgrep.
+- **Secrets:** For this assessment, out of scope. It's a paid service/feature in Semgrep but for an actual rollout we should include a Secrets scan.
 - **Dependency:** In scope via `semgrep ci` (Supply Chain). SCA/dependency scanning serves a different function and does not overlap SAST. However no enforcement policy is done for this assessments security gate.
 
 ## Failure behaviour
