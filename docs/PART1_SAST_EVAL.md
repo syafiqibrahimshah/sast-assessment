@@ -165,18 +165,18 @@ Caveat: AI agent assisted analysis.
 
 Semgrep was measured as one scan. CodeQL was measured in two phases: database creation, which includes extraction and any required build, followed by query analysis. The `real` value from `/usr/bin/time -p` is the wall-clock time used for comparison. CodeQL runs used a workspace temporary directory to avoid a macOS temporary-path permission issue.
 
-| Tool and scope | Phase | Wall clock (`real`) | 
-|---|---|---:|---:|
-| Semgrep `auto` on `services/` | Scan | 8.17s | 
+| Tool and scope | Phase | Wall clock (`real`) |
+|---|---|---:|
+| Semgrep `auto` on `services/` | Scan | 8.17s |
 | Semgrep custom rules on `services/` | Scan | 1.23s |
-| CodeQL Python | Database creation | 1.97s | 
+| CodeQL Python | Database creation | 1.97s |
 | CodeQL Python | Query analysis | 5.26s |
-| CodeQL JavaScript | Database creation | 3.07s | 
-| CodeQL JavaScript | Query analysis | 9.10s | 
+| CodeQL JavaScript | Database creation | 3.07s |
+| CodeQL JavaScript | Query analysis | 9.10s |
 | CodeQL Java | Database creation, including `mvn clean package` | 13.23s |
-| CodeQL Java | Query analysis | 8.39s | 
+| CodeQL Java | Query analysis | 8.39s |
 | CodeQL Go | Database creation | 8.02s |
-| CodeQL Go | Query analysis | 5.23s | 2 |
+| CodeQL Go | Query analysis | 5.23s |
 
 **Verified against target-app:** Semgrep analyzed 17 application files. CodeQL
 analyzed 10 Python, 4 JavaScript, 3 Java, and 2 Go files. CodeQL end-to-end
