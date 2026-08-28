@@ -33,7 +33,7 @@ reduce trust in the security gate.
 | Low | Any | MONITOR |
 
 ### Example of policy in Semgrep App Platform 
-<img src="../semgrep_policies.png" alt="Example of policy in Semgrep App Platform" width="600" height="400">
+<img src="../semgrep_policies.png" alt="Example of policy in Semgrep App Platform" width="900" height="600">
 
 ## Diff scope
 
