@@ -14,13 +14,22 @@ The runnable artifact is `.github/workflows/semgrepci.yml`. This document is the
 
 ## Enforcement policy
 
-Reuse Semgrep Scoring System.
+Reuse Semgrep Scoring System with a risk-based approach. We do not block every Semgrep finding because doing so would create excessive developer friction and
+reduce trust in the security gate.
 
+### SAST
+
+| Severity | Confidence | Enforcement |
+|----------|------------|-------------|
+| Critical | High | BLOCK |
+| Critical | Medium/Low | COMMENT |
+| High | High | BLOCK |
+| High | Medium/Low | COMMENT |
+| High | Low | MONITOR |
+| Medium | High | COMMENT |
+| Medium | Medium/Low | MONITOR |
+| Low | Any | MONITOR |
 | Finding type | Action | Threshold |
-|---|---|---|
-| `ERROR` severity | **Blocks merge** | Confirmed sink + untrusted source per rule's own dataflow. |
-| `WARNING` severity | **Annotates only** — PR comment | Non-blocking |
-| Anything found only in the nightly/main full-repo scan | **Triaged asynchronously** — files into the backlog | Non-blocking |
 
 ## Diff scope
 
