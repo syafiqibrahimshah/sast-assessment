@@ -4,7 +4,7 @@ The runnable artifact is `.github/workflows/semgrepci.yml`. This document is the
 
 ## The two required runs
 1. Go to the PR's 'Checks' or 'Conversation' tab and confirm the Semgrep/security workflow.
-2. Click into the specific check run (not just the PR page) to land on the Actions run page, where the 're-run' controls live.
+2. Click into the specific check run to land on the Actions run page, where the 're-run' controls live.
 3. Use the 'Re-run all jobs' button (top right of the run page).
 
 **Run 1 — clean commit, passes.**
@@ -89,10 +89,3 @@ For non-PCI repos, occasional CI friction from scanner infra isn't worth blockin
 - Managed scans; could be useful for 120++ repos. See: https://docs.semgrep.dev/deployment/managed-scanning/overview
 - Drilling down supply chains/dependencies findings. 
 
-## Where AI/LLM tooling fits (optional section)
-
-I'd use it for:
-- First-pass triage, e.g.: is this reachable, is this the same root cause as another finding? Walk me through the source to sink. The output and AI reasonings are then verified by a human reviewer.
-- Handling large amounts of low severity backlog findings.
-
-I would **not** let it make the block/don't-block decision unsupervised. Human in the loop is needed to verify evidence — a traced, reproducible path from source to sink for accountability.
