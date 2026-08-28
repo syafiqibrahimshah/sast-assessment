@@ -37,7 +37,7 @@ reduce trust in the security gate.
 
 ## Diff scope
 
-**PR / push: changed-files only** via `semgrep ci`, which has diff-aware capability. Scan on changed files only for speed. Full scan job will provide full coverage on a scheduled basis.
+**PR: changed-files only** via `semgrep ci`, which has diff-aware capability. Scan on changed files only for speed. Full scan job will provide full coverage on a scheduled basis.
 
 **main / nightly: full-repo scan, non-blocking.** We don't want to block devs' PRs on legacy code that they did not introduce.
 
