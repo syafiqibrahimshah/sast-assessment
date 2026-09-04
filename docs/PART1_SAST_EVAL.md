@@ -100,7 +100,7 @@ codeql database analyze artifacts/codeql-go \
 | **Criterion** | Semgrep | CodeQL | Notes |
 |---|---|---|---|
 | **Languages in this repository** | Supports Python, JavaScript, Java, and Go in the selected scans. Verified against target-app; registry scans analyzed all four service languages | Supports Python, JavaScript, Java, and Go. Verified against target-app; CodeQL databases build and analyzed for all four languages | **Vendor documentation:** Both tools list these languages as supported |
-| **Findings returned** | 34 with `auto` | 8 Python, 5 JavaScript, 2 Go, and 0 Java security results | **Verified against target-app:** counts came from the `JSON/SARIF` artifacts in `artifacts/` |
+| **Findings returned** | 34 with `auto` | 10 Python, 7 JavaScript, 2 Go, and 1 Java security results | **Verified against target-app:** counts came from the `JSON/SARIF` artifacts in `artifacts/` |
 | **Findings assessed real** | AI Assisted | AI Assisted | **Verified against target-app:** See Triage table |
 | **Scan duration** | AI Assisted | AI Assisted | **Verified against target-app:** See Duration measurement |
 | **Setup friction** | Easy local installation and setup. One command run. | CLI available. Database build required. Source build for compiled languages. | **Verified against target-app:** Documented in the reproducibility section above |
@@ -112,9 +112,7 @@ codeql database analyze artifacts/codeql-go \
 ## Triage
 Caveat: AI agent assisted analysis. Further reasoned and judgemet by human in the Four-findings evaluation sections.
 
-Legend: **TP** = real, verified by hand · **FP** = flagged but not actually exploitable ·
-**Info/quality** = correctness or style, not a security finding. "Caught by" lists every
-tool that raised it; a location caught by only one tool is called out.
+Legend: **TP** = real, verified by hand · **FP** = flagged but not actually exploitable·
 
 ### True Positives
 | # | Location | Issue | Caught by | Notes |
@@ -125,21 +123,15 @@ tool that raised it; a location caught by only one tool is called out.
 | 4 | `services/api/receipts.py:15-16` | `subprocess.run(f"wkhtmltopdf --quiet {src} {dst}", shell=True)` → command injection | Semgrep + CodeQL | **TP**. The receipt filename/path is attacker-controlled and flows into a shell command. This is directly reachable and chains with the path traversal issue below. |
 | 5 | `services/api/app.py:86` and `services/api/receipts.py:7-8` | Unvalidated `filename` path param used to build filesystem paths → path traversal | CodeQL only | **TP**. CodeQL reports `py/path-injection` twice. The attacker-controlled filename reaches filesystem path construction. Semgrep missed this in the default configuration. |
 | 6 | `services/api/webhooks_out.py:8` | Outbound GET to merchant-supplied URL → SSRF | CodeQL only | **TP**. CodeQL reports `py/full-ssrf`. A user-controlled URL is used in a server-side outbound request. |
-| 7 | `services/api/auth.py:22-27` | `jwt.decode(token, verify=False)` → any bearer token is accepted at face value | Manual only | **TP**. The code accepts tokens without verification. This is a real authentication bypass and was not caught by either default ruleset in the SARIF results. |
-| 8 | `services/api/util/crypto.py:31-32` | `==` comparison in webhook signature validation → timing side channel | Manual only | **TP**. The code compares signatures using `==` rather than `hmac.compare_digest`, leaking timing signal. This is a real crypto/auth flaw, but not a standard scanner pattern. |
-| 9 | `services/settlement/src/main/java/com/coda/settlement/SettlementParser.java:12-17` | XXE on acquirer-uploaded file | Semgrep only | **TP**. Semgrep reports an XXE sink in the XML parser. The XML document builder is not hardened against entity expansion in this code path. |
-| 10 | `services/settlement/src/main/java/com/coda/settlement/LedgerRepository.java:26` | SQL injection via concatenated `merchantId` / `batchRef` values | Semgrep + CodeQL | **TP**. Semgrep flags `formatted-sql-string`; CodeQL flags `java/concatenated-sql-query`. The unsafe SQL string concatenation is present and reachable from untrusted values. |
-| 11 | `services/settlement/src/main/java/com/coda/settlement/LedgerRepository.java:12-14` | Hardcoded database credentials in source | Manual only | **TP**. The application stores DB credentials directly in source. This is a real secret-management issue and was not flagged by the default scanner rules in this run. |
-| 12 | `services/webhooks/lib/verify.js:19-21` | `jwt.decode` without verification used to gate `/admin/config` | Semgrep only | **TP**. The route uses decoded claims without verification. This is an authentication bypass pattern and a real issue even though CodeQL did not flag it in the default suite. |
-| 13 | `services/webhooks/lib/verify.js:23-25` | `jwt.verify(..., { algorithms: ['none', 'HS256'] })` accepts unsigned tokens | Semgrep only | **TP**. The code explicitly permits the `none` algorithm, which is insecure. This is a real JWT validation issue. |
-| 14 | `services/webhooks/lib/config.js:18` | Prototype pollution via recursive deep-merge assignment | CodeQL only | **TP**. CodeQL reports `js/prototype-pollution-utility`. Attacker-controlled config keys can pollute object prototypes and change application behavior. |
-| 15 | `services/webhooks/server.js:29` and `services/webhooks/lib/render.js:15-17` | Reflected XSS via unescaped `message`/rendered value | Semgrep + CodeQL | **TP**. The output is rendered into HTML from user-controlled input. One of the reported JS XSS findings is a valid sink; the surrounding logic confirms this is an actual output path. |
-| 16 | `services/webhooks/server.js:60` | `/admin/export` executes shell command built from request data | Semgrep + CodeQL | **TP**. User-controlled `partner`/`day` values are interpolated into a shell command. The sink is reachable and exploitable. |
-| 17 | `services/webhooks/lib/verify.js:6` | Hardcoded HMAC secret in source | Semgrep only | **TP**. A static secret is committed in source. This is a real secret exposure issue and matches the generic secret-pattern rule. |
-| 18 | `services/ledger/main.go:18-21` | `reconcile()` executes `sh -c` with request-controlled region | Semgrep + CodeQL | **TP**. The request body flows directly into a shell command. This is the clearest confirmed command-injection issue and matches both tools. |
-| 19 | `services/ledger/client.go:14-19` | `InsecureSkipVerify: true` on outbound ledger client and hardcoded bearer token | Manual only | **TP**. The client skips certificate validation and sends a bearer token to an internal service. This is a real trust-boundary weakness, though impact is somewhat reduced because the service is internal-only. |
-| 20 | `services/ledger/client.go:11` | Hardcoded bearer token in source | Manual only | **TP**. A static bearer token is committed to source and is thus exposed to anyone with repo access. |
-| 21 | `services/ledger/main.go:45-52` | `fetchBatch` interpolates `id` query param into a URL without validation | Manual only | **TP**. The app handles a similar input elsewhere with validation; here it does not. This is a real logic inconsistency and should be reviewed as a follow-up issue. |
+| 7 | `services/settlement/src/main/java/com/coda/settlement/SettlementParser.java:12-17` | XXE on acquirer-uploaded file | Semgrep only | **TP**. Semgrep reports an XXE sink in the XML parser. The XML document builder is not hardened against entity expansion in this code path. |
+| 8 | `services/settlement/src/main/java/com/coda/settlement/LedgerRepository.java:26` | SQL injection via concatenated `merchantId` / `batchRef` values | Semgrep + CodeQL | **TP**. Semgrep flags `formatted-sql-string`; CodeQL flags `java/concatenated-sql-query`. The unsafe SQL string concatenation is present and reachable from untrusted values. |
+| 9 | `services/webhooks/lib/verify.js:19-21` | `jwt.decode` without verification used to gate `/admin/config` | Semgrep only | **TP**. The route uses decoded claims without verification. This is an authentication bypass pattern and a real issue even though CodeQL did not flag it in the default suite. |
+| 10 | `services/webhooks/lib/verify.js:23-25` | `jwt.verify(..., { algorithms: ['none', 'HS256'] })` accepts unsigned tokens | Semgrep only | **TP**. The code explicitly permits the `none` algorithm, which is insecure. This is a real JWT validation issue. |
+| 11 | `services/webhooks/lib/config.js:18` | Prototype pollution via recursive deep-merge assignment | CodeQL only | **TP**. CodeQL reports `js/prototype-pollution-utility`. Attacker-controlled config keys can pollute object prototypes and change application behavior. |
+| 12 | `services/webhooks/server.js:29` and `services/webhooks/lib/render.js:15-17` | Reflected XSS via unescaped `message`/rendered value | Semgrep + CodeQL | **TP**. The output is rendered into HTML from user-controlled input. One of the reported JS XSS findings is a valid sink; the surrounding logic confirms this is an actual output path. |
+| 13 | `services/webhooks/server.js:60` | `/admin/export` executes shell command built from request data | Semgrep + CodeQL | **TP**. User-controlled `partner`/`day` values are interpolated into a shell command. The sink is reachable and exploitable. |
+| 14 | `services/webhooks/lib/verify.js:6` | Hardcoded HMAC secret in source | Semgrep only | **TP**. A static secret is committed in source. This is a real secret exposure issue and matches the generic secret-pattern rule. |
+| 15 | `services/ledger/main.go:18-21` | `reconcile()` executes `sh -c` with request-controlled region | Semgrep + CodeQL | **TP**. The request body flows directly into a shell command. This is the clearest confirmed command-injection issue and matches both tools. |
 
 ### False positives / low-confidence findings
 
@@ -147,22 +139,8 @@ tool that raised it; a location caught by only one tool is called out.
 |---|---|---|---|---|
 | FP-1 | `services/api/db.py:20-24` | String-built SQL, looks similar to SQL injection | Semgrep (low confidence) | **FP**. `column` is restricted by a hardcoded whitelist before reaching the query string. User input never reaches the SQL text directly. |
 | FP-2 | `services/webhooks/lib/render.js:11-13` | HTML template literal | Semgrep | **FP**. The values are sanitized by `escapeHtml()` before rendering. Semgrep pattern matching lacked escaping awareness. |
-| FP-3 | `services/ledger/main.go:23-29` | `exec.Command` same family as the real injection | Neither tool flagged it | **FP**. Input is validated against a regex and passed as a discrete argv value, not string-built into a shell. |
-| FP-4 | `services/webhooks/server.js:47-56` | `execFile` with request data | Neither tool flagged it | **FP**. `region` is checked against `ALLOWED_REGIONS` and `execFile` prevents shell breakout. |
-| FP-5 | `services/settlement/src/main/java/com/coda/settlement/SettlementParser.java:19-25` | Same `DocumentBuilderFactory` pattern as XXE | Neither tool flagged it | **FP**. Entity expansion is explicitly disabled. |
-| FP-6 | `services/settlement/src/main/java/com/coda/settlement/IdempotencyKey.java:24-27` | `java.util.Random` pattern | Neither tool flagged it | **FP / quality note**. Used only for log correlation, not security-relevant input. |
-| FP-7 | `services/api/util/crypto.py:21-24` | MD5 usage | Semgrep + CodeQL | **FP**. The value is a cache key, not an auth or integrity control. |
-| FP-8 | `services/api/tests/test_auth.py:4-5` | Strings shaped like live API keys / webhook secrets | Semgrep secret rule | **FP / triage**. They are test fixtures with `_test_` names and placeholder entropy. |
-
-### Quality / correctness findings (not counted as security vulnerabilities)
-
-| Location | Issue | Why not a security TP |
-|---|---|---|
-| `services/webhooks/server.js:4-9` | Unused imports | Style issue only |
-| `services/webhooks/lib/verify.js` | CSRF middleware warning | Not a direct security issue in the current route setup |
-| `services/api/webhooks_out.py` | `raise-for-status` style warning | Not a vulnerability |
-| `services/ledger/main.go:42,51` | “No direct write to ResponseWriter” | Best-practice warning, not a confirmed vulnerability |
-| `services/api/app.py:5` | Unused import | Style issue only |
+| FP-3 | `services/api/util/crypto.py:21-24` | MD5 usage | Semgrep + CodeQL | **FP**. The value is a cache key, not an auth or integrity control. |
+| FP-4 | `services/api/tests/test_auth.py:4-5` | Strings shaped like live API keys / webhook secrets | Semgrep secret rule | **FP / triage**. They are test fixtures with `_test_` names and placeholder entropy. |
 
 ## Duration measurement
 Caveat: AI agent assisted analysis.
@@ -226,8 +204,7 @@ required:
 #### Tested locally by bringing up the service
 Making a request using the forged cookie:
 ```bash
-% curl -s http://localhost:8080/healthz \        
-  -b "paylink_session=gAWVHQAAAAAAAAB9lIwLbWVyY2hhbnRfaWSUjAhtY2hfdGVzdJRzLg=="
+% curl -s http://localhost:8080/healthz
 {
   "ok": true
 }
@@ -317,8 +294,16 @@ An authenticated attacker could submit:
   "body": "{\"ok\":true}", 
   "status": 200
 }
-```
 
+% curl -s -X POST http://localhost:8080/v1/webhooks/probe \
+  -H "Content-Type: application/json" \
+  -b "paylink_session=gAWVHQAAAAAAAAB9lIwLbWVyY2hhbnRfaWSUjAhtY2hfdGVzdJRzLg==" \
+  -d '{"url": "https://www.google.com"}'
+{
+  "body": "<!doctype html><html itemscope=\"\" itemtype=\"http://schema.org/WebPage\" lang=\"en-MY\"><head><meta content=\"text/html; charset=UTF-8\" http-equiv=\"Content-Type\"><meta content=\"/images/branding/googleg/1x/googleg_standard_color_128dp.png\" itemprop=\"image\"><title>Google</title><script nonce=\"_5k73y0QDH7Zp873VwZg9A\">(function(){var _g={kEI:'6DKaauW1NLS64-EPyua-sA0',kEXPI:'0,4318858,6397,9708,344796,226411,5293914,12270,6,199,540,55,5991670,9,16,12,56047947,217551,176146,107648,41099,26230,25591,46339,10840,2,21719,16179,2646,4537,35597,3,1515,3355,12011,12,17402,5089,3027,13,782,14627,21996,5337,2891,2,13,8516,19726,5,964,2,147,34657,2,6335,14329,2,4981,10,13528,6293,10880,12548,2676,8751,1930,12246,7187,3933,21017371,4,2960,3,10051,3,17892,24,56,3,3780,2,6508412,6,8300,8372,3,2981,1248,3,1567,223,3,269,2043,570,3,497,1239,635,135,284,937,597,3,732,1681,652,73804,673,2437294,1078330,1960766,12052839,1503667,1,105685,19712,2,326092,5,73959,3588,244118,388,121544,656969,3,1070,2,1246,475,6776,7,7,7,12229,4616,1247,1109,4895,5354,576,377,3527,484,5,18,15698,11451,5,955,6593,306,4,3815,253,920,5,4025,11,6810,9,13,7936,3396,1049,815,1734,7889,953,421,12,1708,4,4585,911,4299,1535,1530,1150,90,6251,282,7286,11,9727,4,11649,12034,2398,4,1483,2476,5852,8672,4,26,278,57,5,695,5,58,4,3315,2624,2048,4,3621,5,259,2,1569,1,2603,1,689,221,5,1132,4449,5,1615,4,7597,563,2352,1,1,3,19,1,3744,5,642,371,2881,892,1245,2,17,252,3521,6,4,131,4,480,4,852,2003,4,2002,101,2,453,5,202,4,11964,4,933,4,69,5,6213,1638,2879,5,1253,5,653,4,2993,804,276,4,193,3491,5,379,2711,1,563,5,1293,5,29,2747,2952,256,4,13135,1070,5,1507,1243,4,1566,2061,557,417,309,1,472,930,2,281,4,2047,4,1478,4,1634,1168,4,177,4,2698,4,6653,780,5,2587,7,735,4657,1289,4,571,236,501,5,578,3,2,2,2,381,3,2,2,2,13,2,4,3556,652,10,1848,3,1732,4,2702,1,2,4087,4,2862,2266,3,2,2,2,221,4,755,587,2239,189,3,2,2,2,44,82,4,2415,546,2819,143,2,1028,4,2726,981,4,2100,409,553,4,512,4,1184,5,1702,4,759,65,3,2,2,2,106,2,3295,1586,333,5,1117,11,11,3342,10,159,373,3,179,5,240,413,1,2,3301,400,737,", 
+  "status": 200
+}
+```
 ### Case 3: Missing JWT signature verification
 
 File: `services/webhooks/lib/verify.js:19-21`
