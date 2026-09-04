@@ -110,37 +110,74 @@ codeql database analyze artifacts/codeql-go \
 | **Maintenance burden** | Repository-owned local rules plus registry/policy review | Query packs plus language-specific build configuration | **Vendor documentation:** rules, query packs, and integrations require ongoing updates |
 
 ## Triage
-Caveat: AI agent assisted analysis. Further reasoned and judgemet by human in the Four-findings evaluation sections.
+Caveat: AI agent assisted analysis. Further reasoned and judgemet by human in the Three findings evaluation sections.
 
 Legend: **TP** = real, verified by hand · **FP** = flagged but not actually exploitable·
 
-### True Positives
-| # | Location | Issue | Caught by | Notes |
-|---|---|---|---|---|
-| 1 | `services/api/auth.py:18` | `pickle.loads` on an attacker-controlled session cookie → RCE | Semgrep + CodeQL | **TP**. CodeQL flags `py/unsafe-deserialization`, and the cookie/session value flows directly into `pickle.loads`. This is a real deserialization exploit and reachable from attacker-controlled input. |
-| 2 | `services/api/db.py:35` | SQL injection via `reference` / `status` query params, built with f-string SQL | Semgrep + CodeQL | **TP**. Semgrep flags the raw f-string SQL, and CodeQL reports `py/sql-injection`. The request parameters flow directly into the SQL sink. |
-| 3 | `services/api/app.py:62` | `banner` query param concatenated into a rendered template string → server-side template injection | Semgrep + CodeQL | **TP**. Semgrep raises a raw HTML/template warning, and CodeQL flags `py/template-injection`. This is more severe than simple XSS because Jinja SSTI can lead to code execution. |
-| 4 | `services/api/receipts.py:15-16` | `subprocess.run(f"wkhtmltopdf --quiet {src} {dst}", shell=True)` → command injection | Semgrep + CodeQL | **TP**. The receipt filename/path is attacker-controlled and flows into a shell command. This is directly reachable and chains with the path traversal issue below. |
-| 5 | `services/api/app.py:86` and `services/api/receipts.py:7-8` | Unvalidated `filename` path param used to build filesystem paths → path traversal | CodeQL only | **TP**. CodeQL reports `py/path-injection` twice. The attacker-controlled filename reaches filesystem path construction. Semgrep missed this in the default configuration. |
-| 6 | `services/api/webhooks_out.py:8` | Outbound GET to merchant-supplied URL → SSRF | CodeQL only | **TP**. CodeQL reports `py/full-ssrf`. A user-controlled URL is used in a server-side outbound request. |
-| 7 | `services/settlement/src/main/java/com/coda/settlement/SettlementParser.java:12-17` | XXE on acquirer-uploaded file | Semgrep only | **TP**. Semgrep reports an XXE sink in the XML parser. The XML document builder is not hardened against entity expansion in this code path. |
-| 8 | `services/settlement/src/main/java/com/coda/settlement/LedgerRepository.java:26` | SQL injection via concatenated `merchantId` / `batchRef` values | Semgrep + CodeQL | **TP**. Semgrep flags `formatted-sql-string`; CodeQL flags `java/concatenated-sql-query`. The unsafe SQL string concatenation is present and reachable from untrusted values. |
-| 9 | `services/webhooks/lib/verify.js:19-21` | `jwt.decode` without verification used to gate `/admin/config` | Semgrep only | **TP**. The route uses decoded claims without verification. This is an authentication bypass pattern and a real issue even though CodeQL did not flag it in the default suite. |
-| 10 | `services/webhooks/lib/verify.js:23-25` | `jwt.verify(..., { algorithms: ['none', 'HS256'] })` accepts unsigned tokens | Semgrep only | **TP**. The code explicitly permits the `none` algorithm, which is insecure. This is a real JWT validation issue. |
-| 11 | `services/webhooks/lib/config.js:18` | Prototype pollution via recursive deep-merge assignment | CodeQL only | **TP**. CodeQL reports `js/prototype-pollution-utility`. Attacker-controlled config keys can pollute object prototypes and change application behavior. |
-| 12 | `services/webhooks/server.js:29` and `services/webhooks/lib/render.js:15-17` | Reflected XSS via unescaped `message`/rendered value | Semgrep + CodeQL | **TP**. The output is rendered into HTML from user-controlled input. One of the reported JS XSS findings is a valid sink; the surrounding logic confirms this is an actual output path. |
-| 13 | `services/webhooks/server.js:60` | `/admin/export` executes shell command built from request data | Semgrep + CodeQL | **TP**. User-controlled `partner`/`day` values are interpolated into a shell command. The sink is reachable and exploitable. |
-| 14 | `services/webhooks/lib/verify.js:6` | Hardcoded HMAC secret in source | Semgrep only | **TP**. A static secret is committed in source. This is a real secret exposure issue and matches the generic secret-pattern rule. |
-| 15 | `services/ledger/main.go:18-21` | `reconcile()` executes `sh -c` with request-controlled region | Semgrep + CodeQL | **TP**. The request body flows directly into a shell command. This is the clearest confirmed command-injection issue and matches both tools. |
+### CodeQL
 
-### False positives / low-confidence findings
+| # | Vuln Name | Description | File Path | TP/FP |
+|---:|---|---|---|:---:|
+| 1 | `go/disabled-certificate-check` | TLS verification is explicitly disabled in the ledger client, so internal HTTPS traffic can be intercepted or modified. | `client.go` | TP |
+| 2 | `go/command-injection` | The region value is interpolated into a shell command, so a crafted input can execute arbitrary shell code. | `main.go` | TP |
+| 3 | `java/concatenated-sql-query` | The SQL statement concatenates merchant and batch values directly, allowing SQL injection through untrusted input. | `LedgerRepository.java` | TP |
+| 4 | `js/reflected-xss` | The response path renders user-controlled request data into HTML without escaping all of it, enabling reflected XSS. | `server.js` | TP |
+| 5 | `js/missing-rate-limiting` | The replay endpoint runs a privileged system command without any rate limiting, allowing brute-force or abuse. | `server.js` | TP |
+| 6 | `js/missing-rate-limiting` | The export endpoint performs a privileged system command without rate limiting, making abuse easier. | `server.js` | TP |
+| 7 | `js/prototype-pollution-utility` | The deep merge helper copies attacker-controlled keys into an object without guarding against prototype pollution vectors. | `config.js` | TP |
+| 8 | `js/command-line-injection` | Partner and day are inserted into a shell command, allowing command injection through those fields. | `server.js` | TP |
+| 9 | `js/remote-property-injection` | The merge logic writes properties from untrusted input into object keys, which can lead to prototype or object-property injection. | `config.js` | TP |
+| 10 | `js/remote-property-injection` | Same issue as above on the second sink site; untrusted object keys are used to mutate object state. | `config.js` | TP |
+| 11 | `py/sql-injection` | The transaction lookup builds a SQL string with merchant, reference, and status from request data, enabling SQL injection. | `db.py` | TP |
+| 12 | `py/unsafe-deserialization` | The session cookie is base64-decoded and unpickled directly, allowing arbitrary code execution if the cookie is attacker-controlled. | `auth.py` | TP |
+| 13 | `py/flask-debug` | The app is started with debug mode enabled, exposing Flask’s interactive debugger to attackers. | `app.py` | TP |
+| 14 | `py/full-ssrf` | The probe endpoint fetches arbitrary merchant-supplied URLs, enabling server-side request forgery. | `webhooks_out.py` | TP |
+| 15 | `py/path-injection` | The receipt download path includes user-controlled filename data without strict canonicalization or validation, enabling path traversal. | `app.py` | TP |
+| 16 | `py/path-injection` | The PDF rendering path also uses a user-controlled filename in a filesystem path, allowing traversal or overwriting outside the intended directory. | `app.py` | TP |
+| 17 | `py/command-line-injection` | The PDF generation command embeds the receipt path in a shell command, so a crafted filename can execute arbitrary commands. | `receipts.py` | TP |
+| 18 | `py/template-injection` | The banner value is inserted into a Jinja template string before rendering, allowing template injection. | `app.py` | TP |
+| 19 | `py/request-without-cert-validation` | This is a local dev helper that explicitly disables certificate validation for loopback testing; not a production issue. | `dev_probe.py` | FP |
+| 20 | `py/unused-import` | This is a lint/style finding only; it is not a vulnerability. | `app.py` | FP |
 
-| # | Location | Issue | Caught by | Notes |
-|---|---|---|---|---|
-| FP-1 | `services/api/db.py:20-24` | String-built SQL, looks similar to SQL injection | Semgrep (low confidence) | **FP**. `column` is restricted by a hardcoded whitelist before reaching the query string. User input never reaches the SQL text directly. |
-| FP-2 | `services/webhooks/lib/render.js:11-13` | HTML template literal | Semgrep | **FP**. The values are sanitized by `escapeHtml()` before rendering. Semgrep pattern matching lacked escaping awareness. |
-| FP-3 | `services/api/util/crypto.py:21-24` | MD5 usage | Semgrep + CodeQL | **FP**. The value is a cache key, not an auth or integrity control. |
-| FP-4 | `services/api/tests/test_auth.py:4-5` | Strings shaped like live API keys / webhook secrets | Semgrep secret rule | **FP / triage**. They are test fixtures with `_test_` names and placeholder entropy. |
+### Semgrep
+
+| # | Vuln Name | Description | File Path | TP/FP |
+|---:|---|---|---|:---:|
+| 1 | `dockerfile.security.missing-user.missing-user` | Container runs as root because no non-root USER is set. | `Dockerfile` | TP |
+| 2 | `python.django.security.injection.raw-html-format.raw-html-format` | User-controlled banner string is concatenated into HTML with string replacement, enabling reflected XSS. | `app.py` | TP |
+| 3 | `python.flask.security.injection.raw-html-concat.raw-html-format` | Same XSS pattern: banner content is embedded into a manually built HTML block. | `app.py` | TP |
+| 4 | `python.flask.security.audit.render-template-string.render-template-string` | The app renders a string-based template with attacker-controlled content, enabling server-side template injection. | `app.py` | TP |
+| 5 | `python.flask.debug.debug-flask.active-debug-code-flask` | Flask is configured with debug mode enabled, exposing the debugger and stack traces. | `app.py` | TP |
+| 6 | `python.flask.security.audit.app-run-param-config.avoid_app_run_with_bad_host` | Flask binds to 0.0.0.0, exposing the app publicly. | `app.py` | TP |
+| 7 | `python.flask.security.audit.debug-enabled.debug-enabled` | Debug flag is enabled in production config. | `app.py` | TP |
+| 8 | `python.django.security.audit.avoid-insecure-deserialization.avoid-insecure-deserialization` | Pickle is used to deserialize the session cookie, which is unsafe and can lead to code execution. | `auth.py` | TP |
+| 9 | `python.lang.security.deserialization.pickle.avoid-pickle` | Pickle deserialization is explicitly flagged as dangerous. | `auth.py` | TP |
+| 10 | `python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query` | Raw SQL is built from a merchant id and then executed, allowing SQL injection. | `db.py` | TP |
+| 11 | `python.lang.security.audit.formatted-sql-query.formatted-sql-query` | SQL is formatted via string interpolation, enabling injection. | `db.py` | TP |
+| 12 | `python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query` | Raw SQL is built from reference and status values and executed without parameters. | `db.py` | TP |
+| 13 | `python.lang.security.audit.subprocess-shell-true.subprocess-shell-true` | A shell command is used to render PDFs, creating command injection risk. | `receipts.py` | TP |
+| 14 | `go.lang.security.audit.crypto.missing-ssl-minversion.missing-ssl-minversion` | TLS min version is not enforced in the HTTP client config. | `client.go` | TP |
+| 15 | `problem-based-packs.insecure-transport.go-stdlib.bypass-tls-verification.bypass-tls-verification` | Certificate validation is explicitly disabled, allowing MITM attacks. | `client.go` | TP |
+| 16 | `go.lang.security.audit.dangerous-exec-command.dangerous-exec-command` | A shell command includes a user-controlled region value and is executed unsafely. | `main.go` | TP |
+| 17 | `go.lang.security.audit.xss.no-direct-write-to-responsewriter.no-direct-write-to-responsewriter` | Response data is written directly to the HTTP response without HTML escaping. | `main.go` | TP |
+| 18 | `go.net.xss.no-direct-write-to-responsewriter-taint.no-direct-write-to-responsewriter-taint` | Untrusted upstream data is written to the response, creating a potential XSS sink. | `main.go` | TP |
+| 19 | `go.net.xss.no-direct-write-to-responsewriter-taint.no-direct-write-to-responsewriter-taint` | Untrusted upstream data is written to the response, creating a potential XSS sink. | `main.go` | TP |
+| 20 | `go.net.xss.no-direct-write-to-responsewriter-taint.no-direct-write-to-responsewriter-taint` | Untrusted upstream data is written to the response, creating a potential XSS sink. | `main.go` | TP |
+| 21 | `go.net.xss.no-direct-write-to-responsewriter-taint.no-direct-write-to-responsewriter-taint` | Untrusted upstream data is written to the response, creating a potential XSS sink. | `main.go` | TP |
+| 22 | `java.lang.security.audit.formatted-sql-string.formatted-sql-string` | SQL query is built by string concatenation, enabling SQL injection. | `LedgerRepository.java` | TP |
+| 23 | `java.lang.security.xxe.documentbuilderfactory-xxe-parameter-entity.documentbuilderfactory-xxe-parameter-entity` | XML parser is not hardened against XXE parameter entities. | `SettlementParser.java` | TP |
+| 24 | `java.lang.security.xxe.documentbuilderfactory-xxe-parse.documentbuilderfactory-xxe-parse` | XML parser allows unsafe external entity parsing. | `SettlementParser.java` | TP |
+| 25 | `java.lang.security.xxe.documentbuilderfactory-xxe.documentbuilderfactory-xxe` | XML parser is exposed to general XXE risk and external entity handling. | `SettlementParser.java` | TP |
+| 26 | `java.lang.security.audit.xxe.documentbuilderfactory-disallow-doctype-decl-missing.documentbuilderfactory-disallow-doctype-decl-missing` | DOCTYPE declarations are enabled, leaving the parser vulnerable to XXE attacks. | `SettlementParser.java` | TP |
+| 27 | `javascript.lang.security.audit.hardcoded-hmac-key.hardcoded-hmac-key` | A secret is hardcoded in the webhook verification code. | `verify.js` | TP |
+| 28 | `javascript.jsonwebtoken.security.audit.jwt-decode-without-verify.jwt-decode-without-verify` | JWT is decoded without verification, allowing forgery. | `verify.js` | TP |
+| 29 | `javascript.jsonwebtoken.security.jwt-none-alg.jwt-none-alg` | The app explicitly allows the JWT none algorithm, which is unsafe. | `verify.js` | TP |
+| 30 | `javascript.jsonwebtoken.security.jwt-hardcode.hardcoded-jwt-secret` | JWT secret is hardcoded in source. | `verify.js` | TP |
+| 31 | `javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage` | CSRF protection is missing from the Express app. | `server.js` | TP |
+| 32 | `javascript.express.security.injection.raw-html-format.raw-html-format` | HTML is assembled with untrusted data and sent to the client, enabling XSS. | `server.js` | TP |
+| 33 | `javascript.express.express-child-process.express-child-process` | User-controlled values are used in a spawned OS command, enabling command injection. | `server.js` | TP |
+| 34 | `javascript.lang.security.detect-child-process.detect-child-process` | Command execution is performed with user-controlled input. | `server.js` | TP |
+| 35 | `python.requests.security.disabled-cert-validation.disabled-cert-validation` | Local dev probe disables certificate verification intentionally for loopback testing. | `dev_probe.py` | FP |
 
 ## Duration measurement
 Caveat: AI agent assisted analysis.
