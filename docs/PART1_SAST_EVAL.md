@@ -112,8 +112,6 @@ codeql database analyze artifacts/codeql-go \
 ## Triage
 Caveat: AI agent assisted analysis. Further reasoned and judgemet by human in the Three findings evaluation sections.
 
-Legend: **TP** = real, verified by hand · **FP** = flagged but not actually exploitable·
-
 ### CodeQL
 
 | # | Vuln Name | Description | File Path | TP/FP |
