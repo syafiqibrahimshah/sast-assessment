@@ -187,7 +187,7 @@ analyzed 10 Python, 4 JavaScript, 3 Java, and 2 Go files. CodeQL end-to-end
 totals were Python 7.23s, JavaScript 12.17s, Java 21.62s, and Go 13.25s.
 These totals include database creation; Semgrep has no database phase.
 
-## Four-findings evaluation
+## Three Findings evaluation
 
 ### Case 1: Python insecure deserialization (pickle)
 This is a confirmed insecure deserialization vulnerability in `services/api/auth.py`.
@@ -362,7 +362,7 @@ syafiq@Syafiqs-MacBook-Air target-app % curl -s -X POST http://localhost:8081/ad
 {"retries":3,"backoffMs":500,"partners":{},"features":{"replay":true,"strictSignature":true}}%    
 ```
 
-### Conclusion from the four cases
+### Conclusion from the three cases
 
 1. The pickle deserialization case demonstrates agreement between Semgrep and CodeQL on a critical, reachable vulnerability.
 
