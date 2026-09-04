@@ -15,3 +15,7 @@ def is_safe_filename(name):
 def normalise_currency(code):
     code = (code or "").strip().upper()
     return code if re.match(r"^[A-Z]{3}$", code) else "SGD"
+
+def normalise_reference(ref):
+    """Trim and cap merchant-supplied reference strings for display use."""
+    return (ref or "").strip()[:64]
